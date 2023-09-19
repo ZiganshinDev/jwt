@@ -1,25 +1,26 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
+	"time"
 
-	"github.com/ZiganshinDev/medods/internal/auth"
 	"github.com/ZiganshinDev/medods/internal/config"
-	"github.com/ZiganshinDev/medods/internal/service"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-type Handler struct {
-	services     *service.Services
-	tokenManager auth.TokenManager
+type Storage interface {
+	Insert(ctx context.Context, ip string, refreshToken string) (primitive.ObjectID, error)
 }
 
-func NewHandler(services *service.Services, tokenManager auth.TokenManager) *Handler {
-	return &Handler{
-		services:     services,
-		tokenManager: tokenManager,
-	}
+// TokenManager provides logic for JWT & Refresh tokens generation and parsing.
+type TokenManager interface {
+	NewJWT(userId string, ttl time.Duration) (string, error)
+	Parse(accessToken string) (string, error)
+	NewRefreshToken() (string, error)
 }
 
-func (h *Handler) Init(cfg *config.Config) http.Handler {
+// TODO
+func Init(cfg *config.Config, storage Storage, tokenManager TokenManager) http.Handler {
 	return nil
 }

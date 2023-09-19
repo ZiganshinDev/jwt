@@ -1,4 +1,4 @@
-package repository
+package mongodb
 
 import (
 	"context"
@@ -17,9 +17,9 @@ type RefreshRepo struct {
 	db *mongo.Collection
 }
 
-func NewRefreshRepo(db *mongo.Database) *RefreshRepo {
+func (s *Storage) NewRefreshRepo() *RefreshRepo {
 	return &RefreshRepo{
-		db: db.Collection(refreshSession),
+		db: s.db.Collection(refreshSession),
 	}
 }
 

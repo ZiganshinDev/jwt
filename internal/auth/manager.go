@@ -9,13 +9,6 @@ import (
 	"github.com/dgrijalva/jwt-go"
 )
 
-// TokenManager provides logic for JWT & Refresh tokens generation and parsing.
-type TokenManager interface {
-	NewJWT(userId string, ttl time.Duration) (string, error)
-	Parse(accessToken string) (string, error)
-	NewRefreshToken() (string, error)
-}
-
 type Manager struct {
 	signingKey string
 }

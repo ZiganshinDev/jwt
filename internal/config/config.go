@@ -28,6 +28,7 @@ type Mongo struct {
 	User     string
 	Password string
 	Name     string
+	Database string
 }
 
 type Auth struct {

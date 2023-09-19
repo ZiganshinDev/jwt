@@ -14,9 +14,7 @@ import (
 	"github.com/ZiganshinDev/medods/internal/config"
 	"github.com/ZiganshinDev/medods/internal/http-server/handlers"
 	"github.com/ZiganshinDev/medods/internal/lib/logger/sl"
-	"github.com/ZiganshinDev/medods/internal/repository"
 	"github.com/ZiganshinDev/medods/internal/server"
-	"github.com/ZiganshinDev/medods/internal/service"
 	"github.com/ZiganshinDev/medods/internal/storage/mongodb"
 	"github.com/joho/godotenv"
 	"golang.org/x/exp/slog"
@@ -50,9 +48,8 @@ func main() {
 		return
 	}
 
-	db := mongoClient.Database(cfg.Mongo.Name)
+	mongoDatabase := mongodb.NewStorage(mongoClient, cfg.Mongo.Database)
 
-	//TODO handlers && routers && middlewaver && JWT && refresh etc
 	tokenManager, err := auth.NewManager(cfg.Auth.JWT.SigningKey)
 	if err != nil {
 		log.Error("failed to init auth", sl.Err(err))
@@ -60,17 +57,7 @@ func main() {
 		return
 	}
 
-	repos := repository.NewRepositories(db)
-	services := service.NewServices(service.Deps{
-		Repos:           repos,
-		TokenManager:    tokenManager,
-		AccessTokenTTL:  cfg.Auth.JWT.AccessTokenTTL,
-		RefreshTokenTTL: cfg.Auth.JWT.RefreshTokenTTL,
-	})
-
-	handlers := handlers.NewHandler(services, tokenManager)
-
-	srv := server.New(cfg, handlers.Init(cfg))
+	srv := server.New(cfg, handlers.Init(cfg, mongoDatabase.NewRefreshRepo(), tokenManager))
 
 	go func() {
 		if err := srv.Run(); !errors.Is(err, http.ErrServerClosed) {
