@@ -12,8 +12,8 @@ type Config struct {
 	Env         string `yaml:"env" env-default:"local"`
 	StoragePath string `yaml:"storage_path" env-required:"true"`
 	HTTPServer  `yaml:"http_server"`
-	Mongo       `yaml:"mongo"`
-	Auth        `yaml:"auth"`
+	Mongo
+	JWT `yaml:"jwt"`
 }
 
 type HTTPServer struct {
@@ -31,13 +31,7 @@ type Mongo struct {
 	Database string
 }
 
-type Auth struct {
-	JWT                    JWTConfig `yaml:"jwt"`
-	PasswordSalt           string
-	VerificationCodeLength int
-}
-
-type JWTConfig struct {
+type JWT struct {
 	AccessTokenTTL  time.Duration `yaml:"access_token_ttl"`
 	RefreshTokenTTL time.Duration `yaml:"refresh_token_ttl"`
 	SigningKey      string
@@ -67,6 +61,7 @@ func MustLoad() *Config {
 
 func setFromEnv(cfg *Config) {
 	cfg.Mongo.URI = os.Getenv("MONGO_URI")
+	cfg.Mongo.Database = os.Getenv("MONGO_DATABASE")
 
-	cfg.Auth.JWT.SigningKey = os.Getenv("JWT_SIGNING_KEY")
+	cfg.JWT.SigningKey = os.Getenv("JWT_SIGNING_KEY")
 }

@@ -44,17 +44,15 @@ func main() {
 	mongoClient, err := mongodb.NewClient(cfg.Mongo.URI, cfg.Mongo.User, cfg.Mongo.Password)
 	if err != nil {
 		log.Error("failed to init storage", sl.Err(err))
-
-		return
+		os.Exit(1)
 	}
 
 	mongoDatabase := mongodb.NewStorage(mongoClient, cfg.Mongo.Database)
 
-	tokenManager, err := auth.NewManager(cfg.Auth.JWT.SigningKey)
+	tokenManager, err := auth.NewManager(cfg.JWT.SigningKey)
 	if err != nil {
 		log.Error("failed to init auth", sl.Err(err))
-
-		return
+		os.Exit(1)
 	}
 
 	srv := server.New(cfg, handlers.Init(cfg, mongoDatabase.NewRefreshRepo(), tokenManager))
@@ -62,6 +60,7 @@ func main() {
 	go func() {
 		if err := srv.Run(); !errors.Is(err, http.ErrServerClosed) {
 			log.Error("failed to init http server", sl.Err(err))
+			os.Exit(1)
 		}
 	}()
 
@@ -80,10 +79,12 @@ func main() {
 
 	if err := srv.Stop(ctx); err != nil {
 		log.Error("failed to stop server", sl.Err(err))
+		os.Exit(1)
 	}
 
 	if err := mongoClient.Disconnect(context.Background()); err != nil {
-		log.Error(err.Error())
+		log.Error("failed to stop mongo client", sl.Err(err))
+		os.Exit(1)
 	}
 }
 
