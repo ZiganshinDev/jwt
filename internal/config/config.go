@@ -17,7 +17,7 @@ type Config struct {
 }
 
 type HTTPServer struct {
-	Address     string        `yaml:"address" env-default:"localhost:8080"`
+	Address     string        `yaml:"address" env-default:"localhost:8082"`
 	Timeout     time.Duration `yaml:"timeout" env-default:"4s"`
 	IdleTimeout time.Duration `yaml:"idle_timeout" env-default:"60s"`
 }
@@ -61,6 +61,8 @@ func MustLoad() *Config {
 
 func setFromEnv(cfg *Config) {
 	cfg.Mongo.URI = os.Getenv("MONGO_URI")
+	// cfg.Mongo.User = os.Getenv("MONGO_USERNAME")
+	// cfg.Mongo.Password = os.Getenv("MONGO_PASSWORD")
 	cfg.Mongo.Database = os.Getenv("MONGO_DATABASE")
 
 	cfg.JWT.SigningKey = os.Getenv("JWT_SIGNING_KEY")

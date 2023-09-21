@@ -17,7 +17,6 @@ import (
 	"github.com/ZiganshinDev/medods/internal/lib/logger/sl"
 	"github.com/ZiganshinDev/medods/internal/server"
 	"github.com/ZiganshinDev/medods/internal/storage/mongodb"
-	"github.com/joho/godotenv"
 	"golang.org/x/exp/slog"
 )
 
@@ -28,12 +27,14 @@ const (
 )
 
 func main() {
-	err := godotenv.Load("config.env")
-	if err != nil {
-		log.Fatal("error loading .env file")
-	}
+	// err := godotenv.Load("config.env")
+	// if err != nil {
+	// 	log.Fatal("error loading .env file")
+	// }
 
 	cfg := config.MustLoad()
+	log.Println(cfg.Mongo.URI)
+	log.Println(cfg.JWT.SigningKey)
 
 	log := setupLogger(cfg.Env)
 
