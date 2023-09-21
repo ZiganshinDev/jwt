@@ -13,8 +13,10 @@ import (
 type Storage interface {
 	InsertToken(ctx context.Context, userName string, refreshToken string) error
 	DeleteToken(ctx context.Context, refreshToken string) error
-	SwitchToken(ctx context.Context, oldToken string, newToken string, userName string) error
-	ChechInRepo(ctx context.Context, refreshToken string) bool
+	DeleteTokensByName(ctx context.Context, userName string) error
+	SwitchToken(ctx context.Context, oldRefreshToken string, newRefreshToken string, userName string) error
+	Count(ctx context.Context, userName string) (int64, error)
+	ChechInRepo(ctx context.Context, refreshToken string, userName string) bool
 }
 
 type TokenManager interface {
@@ -23,10 +25,13 @@ type TokenManager interface {
 	NewRefreshToken() (string, error)
 }
 
+type Logger func(http.Handler) http.Handler
+
 type Handler struct {
+	cfg          *config.Config
 	storage      Storage
 	tokenManager TokenManager
-	cfg          *config.Config
+	logger       Logger
 }
 
 type response struct {
@@ -35,20 +40,23 @@ type response struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
-func New(cfg *config.Config, storage Storage, tokenManager TokenManager) *Handler {
+func New(cfg *config.Config, storage Storage, tokenManager TokenManager, logger Logger) *Handler {
 	return &Handler{
+		cfg:          cfg,
 		storage:      storage,
 		tokenManager: tokenManager,
-		cfg:          cfg,
+		logger:       logger,
 	}
 }
 
 func (h *Handler) NewRouter() http.Handler {
 	router := http.NewServeMux()
 
-	router.Handle("/auth", http.HandlerFunc(h.authHandler()))
+	authHandlerWithLogger := h.logger(h.authHandler())
+	router.Handle("/auth", authHandlerWithLogger)
 
-	router.Handle("/refresh", http.HandlerFunc(h.refreshHandler()))
+	refreshHandlerWithLogger := h.logger(h.refreshHandler())
+	router.Handle("/refresh", refreshHandlerWithLogger)
 
 	return router
 }
@@ -87,6 +95,21 @@ func (h *Handler) authHandler() http.HandlerFunc {
 			return
 		}
 
+		count, err := h.storage.Count(context.TODO(), userName)
+		if err != nil {
+			log.Printf("%s: %v", op, err)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
+
+		if count > 4 {
+			if err := h.storage.DeleteTokensByName(context.TODO(), userName); err != nil {
+				log.Printf("%s: %v", op, err)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+		}
+
 		if err := h.storage.InsertToken(context.TODO(), userName, refreshToken); err != nil {
 			log.Printf("%s: %v", op, err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -120,14 +143,14 @@ func (h *Handler) refreshHandler() http.HandlerFunc {
 			return
 		}
 
-		if ok := h.storage.ChechInRepo(context.Background(), refreshToken); !ok {
-			http.Error(w, "Bad Request", http.StatusBadRequest)
-			return
-		}
-
 		userName := r.Header.Get(name)
 		if userName == "" {
 			http.Error(w, fmt.Sprintf("Header '%v' is missing", name), http.StatusBadRequest)
+			return
+		}
+
+		if ok := h.storage.ChechInRepo(context.Background(), refreshToken, userName); !ok {
+			http.Error(w, "Bad Request", http.StatusBadRequest)
 			return
 		}
 

@@ -13,6 +13,7 @@ import (
 	"github.com/ZiganshinDev/medods/internal/auth"
 	"github.com/ZiganshinDev/medods/internal/config"
 	"github.com/ZiganshinDev/medods/internal/http-server/handler"
+	"github.com/ZiganshinDev/medods/internal/http-server/middleware/logger"
 	"github.com/ZiganshinDev/medods/internal/lib/logger/sl"
 	"github.com/ZiganshinDev/medods/internal/server"
 	"github.com/ZiganshinDev/medods/internal/storage/mongodb"
@@ -56,7 +57,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	h := handler.New(cfg, mongoRefreshRepo, tokenManager)
+	logger := logger.Log
+
+	h := handler.New(cfg, mongoRefreshRepo, tokenManager, logger)
 
 	srv := server.New(cfg, h.NewRouter())
 
@@ -69,6 +72,7 @@ func main() {
 
 	log.Info("Server started")
 
+	// Graceful Shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
 
