@@ -12,7 +12,7 @@ import (
 
 	"github.com/ZiganshinDev/medods/internal/auth"
 	"github.com/ZiganshinDev/medods/internal/config"
-	"github.com/ZiganshinDev/medods/internal/http-server/handlers"
+	"github.com/ZiganshinDev/medods/internal/http-server/handler"
 	"github.com/ZiganshinDev/medods/internal/lib/logger/sl"
 	"github.com/ZiganshinDev/medods/internal/server"
 	"github.com/ZiganshinDev/medods/internal/storage/mongodb"
@@ -48,6 +48,7 @@ func main() {
 	}
 
 	mongoDatabase := mongodb.NewStorage(mongoClient, cfg.Mongo.Database)
+	mongoRefreshRepo := mongoDatabase.NewRefreshRepo()
 
 	tokenManager, err := auth.NewManager(cfg.JWT.SigningKey)
 	if err != nil {
@@ -55,7 +56,9 @@ func main() {
 		os.Exit(1)
 	}
 
-	srv := server.New(cfg, handlers.Init(cfg, mongoDatabase.NewRefreshRepo(), tokenManager))
+	h := handler.New(cfg, mongoRefreshRepo, tokenManager)
+
+	srv := server.New(cfg, h.NewRouter())
 
 	go func() {
 		if err := srv.Run(); !errors.Is(err, http.ErrServerClosed) {
@@ -66,7 +69,6 @@ func main() {
 
 	log.Info("Server started")
 
-	// Graceful Shutdown
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGTERM, syscall.SIGINT)
 

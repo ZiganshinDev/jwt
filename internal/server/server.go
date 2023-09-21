@@ -11,11 +11,11 @@ type Server struct {
 	httpServer *http.Server
 }
 
-func New(cfg *config.Config, handler http.Handler) *Server {
+func New(cfg *config.Config, router http.Handler) *Server {
 	return &Server{
 		httpServer: &http.Server{
 			Addr:         cfg.HTTPServer.Address,
-			Handler:      handler,
+			Handler:      router,
 			ReadTimeout:  cfg.HTTPServer.Timeout,
 			WriteTimeout: cfg.HTTPServer.Timeout,
 			IdleTimeout:  cfg.HTTPServer.IdleTimeout,
