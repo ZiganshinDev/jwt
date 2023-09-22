@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"errors"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -27,14 +26,7 @@ const (
 )
 
 func main() {
-	// err := godotenv.Load("config.env")
-	// if err != nil {
-	// 	log.Fatal("error loading .env file")
-	// }
-
 	cfg := config.MustLoad()
-	log.Println(cfg.Mongo.URI)
-	log.Println(cfg.JWT.SigningKey)
 
 	log := setupLogger(cfg.Env)
 

@@ -9,15 +9,14 @@ import (
 )
 
 type Config struct {
-	Env         string `yaml:"env" env-default:"local"`
-	StoragePath string `yaml:"storage_path" env-required:"true"`
-	HTTPServer  `yaml:"http_server"`
+	Env        string `yaml:"env" env-default:"local"`
+	HTTPServer `yaml:"http_server"`
 	Mongo
 	JWT `yaml:"jwt"`
 }
 
 type HTTPServer struct {
-	Address     string        `yaml:"address" env-default:"localhost:8082"`
+	Address     string        `yaml:"address" env-default:"localhost:8080"`
 	Timeout     time.Duration `yaml:"timeout" env-default:"4s"`
 	IdleTimeout time.Duration `yaml:"idle_timeout" env-default:"60s"`
 }
@@ -61,7 +60,7 @@ func MustLoad() *Config {
 
 func setFromEnv(cfg *Config) {
 	cfg.Mongo.URI = os.Getenv("MONGO_URI")
-	// cfg.Mongo.User = os.Getenv("MONGO_USERNAME")
+	// cfg.Mongo.User = os.Getenv("MONGO_USER")
 	// cfg.Mongo.Password = os.Getenv("MONGO_PASSWORD")
 	cfg.Mongo.Database = os.Getenv("MONGO_DATABASE")
 

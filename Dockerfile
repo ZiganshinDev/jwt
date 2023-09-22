@@ -1,9 +1,17 @@
-FROM golang:1.20
+# Используйте официальный образ Golang как базовый образ
+FROM golang:latest
 
-WORKDIR /auth
+# Установите рабочую директорию внутри контейнера
+WORKDIR /app
 
+# Копируйте исходный код в контейнер
 COPY . .
 
-RUN go build -o auth.exe ./cmd/auth/main.go
+# Соберите исполняемый файл
+RUN go build -o server ./cmd/auth/main.go
 
-CMD ["./auth.exe"]
+# Укажите порт, который будет слушать ваш сервер
+EXPOSE 8080
+
+# Запустите ваш сервер при запуске контейнера
+CMD ["./server"]
