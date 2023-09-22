@@ -11,12 +11,13 @@ import (
 )
 
 type Storage interface {
-	InsertToken(ctx context.Context, userName string, refreshToken string) error
+	InsertToken(ctx context.Context, userName string, refreshToken string, timeNow time.Time) error
 	DeleteToken(ctx context.Context, refreshToken string) error
 	DeleteTokensByName(ctx context.Context, userName string) error
-	SwitchToken(ctx context.Context, oldRefreshToken string, newRefreshToken string, userName string) error
-	Count(ctx context.Context, userName string) (int64, error)
-	ChechInRepo(ctx context.Context, refreshToken string, userName string) bool
+	SwitchToken(ctx context.Context, oldRefreshToken string, newRefreshToken string, userName string, timeNow time.Time) error
+	CountTokens(ctx context.Context, userName string) (int64, error)
+	ChechUserToken(ctx context.Context, refreshToken string, userName string, ttl time.Duration) bool
+	GetCreatedTime(ctx context.Context, refreshToken string, userName string) (time.Time, error)
 }
 
 type TokenManager interface {
@@ -95,7 +96,7 @@ func (h *Handler) authHandler() http.HandlerFunc {
 			return
 		}
 
-		count, err := h.storage.Count(context.TODO(), userName)
+		count, err := h.storage.CountTokens(context.TODO(), userName)
 		if err != nil {
 			log.Printf("%s: %v", op, err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -110,7 +111,7 @@ func (h *Handler) authHandler() http.HandlerFunc {
 			}
 		}
 
-		if err := h.storage.InsertToken(context.TODO(), userName, refreshToken); err != nil {
+		if err := h.storage.InsertToken(context.TODO(), userName, refreshToken, time.Now()); err != nil {
 			log.Printf("%s: %v", op, err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
@@ -149,7 +150,7 @@ func (h *Handler) refreshHandler() http.HandlerFunc {
 			return
 		}
 
-		if ok := h.storage.ChechInRepo(context.Background(), refreshToken, userName); !ok {
+		if ok := h.storage.ChechUserToken(context.Background(), refreshToken, userName, h.cfg.JWT.RefreshTokenTTL); !ok {
 			http.Error(w, "Bad Request", http.StatusBadRequest)
 			return
 		}
@@ -168,10 +169,28 @@ func (h *Handler) refreshHandler() http.HandlerFunc {
 			return
 		}
 
-		if err := h.storage.SwitchToken(context.TODO(), refreshToken, newRefreshToken, userName); err != nil {
+		createdTime, err := h.storage.GetCreatedTime(context.TODO(), refreshToken, userName)
+		if err != nil {
 			log.Printf("%s: %v", op, err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
+		}
+
+		if createdTime.Add(h.cfg.JWT.RefreshTokenTTL).Before(time.Now()) {
+			if err := h.storage.DeleteToken(context.TODO(), refreshToken); err != nil {
+				log.Printf("%s: %v", op, err)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
+			http.Error(w, "Bad Request", http.StatusBadRequest)
+			return
+
+		} else {
+			if err := h.storage.SwitchToken(context.TODO(), refreshToken, newRefreshToken, userName, time.Now()); err != nil {
+				log.Printf("%s: %v", op, err)
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+				return
+			}
 		}
 
 		setJWTToken(w, accessToken, h.cfg.AccessTokenTTL)

@@ -57,7 +57,11 @@ func MustLoad() *Config {
 }
 
 func setFromEnv(cfg *Config) {
-	cfg.Mongo.URI = os.Getenv("MONGO_URI")
+	if cfg.Env == "local" {
+		cfg.Mongo.URI = "mongodb://localhost:27017"
+	} else {
+		cfg.Mongo.URI = os.Getenv("MONGO_URI")
+	}
 	// cfg.Mongo.User = os.Getenv("MONGO_USER")
 	// cfg.Mongo.Password = os.Getenv("MONGO_PASSWORD")
 	cfg.Mongo.Database = os.Getenv("MONGO_DATABASE")

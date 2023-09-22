@@ -3,6 +3,7 @@ package mongodb
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/ZiganshinDev/medods/internal/models"
 	"go.mongodb.org/mongo-driver/bson"
@@ -25,6 +26,7 @@ const (
 	usersCollection = "users"
 	name            = "name"
 	rToken          = "refresh_token"
+	createdTime     = "created_time"
 )
 
 func (s *Storage) NewRefreshRepo() *RefreshRepo {
@@ -33,12 +35,13 @@ func (s *Storage) NewRefreshRepo() *RefreshRepo {
 	}
 }
 
-func (r *RefreshRepo) InsertToken(ctx context.Context, userName string, refreshToken string) error {
-	const op = "storage.mongodb.Insert"
+func (r *RefreshRepo) InsertToken(ctx context.Context, userName string, refreshToken string, timeNow time.Time) error {
+	const op = "storage.mongodb.InsertToken"
 
 	if _, err := r.db.InsertOne(ctx, models.Users{
 		Name:         userName,
 		RefreshToken: refreshToken,
+		CreatedTime:  timeNow,
 	}); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
@@ -47,7 +50,7 @@ func (r *RefreshRepo) InsertToken(ctx context.Context, userName string, refreshT
 }
 
 func (r *RefreshRepo) DeleteToken(ctx context.Context, refreshToken string) error {
-	const op = "storage.mongodb.Delete"
+	const op = "storage.mongodb.DeleteToken"
 
 	filter := bson.M{rToken: refreshToken}
 
@@ -59,7 +62,7 @@ func (r *RefreshRepo) DeleteToken(ctx context.Context, refreshToken string) erro
 }
 
 func (r *RefreshRepo) DeleteTokensByName(ctx context.Context, userName string) error {
-	const op = "storage.mongodb.Delete"
+	const op = "storage.mongodb.DeleteTokensByName"
 
 	filter := bson.M{name: userName}
 
@@ -70,26 +73,22 @@ func (r *RefreshRepo) DeleteTokensByName(ctx context.Context, userName string) e
 	return nil
 }
 
-func (r *RefreshRepo) SwitchToken(ctx context.Context, oldRefreshToken string, newRefreshToken string, userName string) error {
+func (r *RefreshRepo) SwitchToken(ctx context.Context, oldRefreshToken string, newRefreshToken string, userName string, timeNow time.Time) error {
 	const op = "storage.mongodb.SwitchToken"
 
-	filter := bson.M{rToken: oldRefreshToken}
-	if _, err := r.db.DeleteOne(ctx, filter); err != nil {
+	if err := r.DeleteToken(ctx, oldRefreshToken); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
-	if _, err := r.db.InsertOne(ctx, models.Users{
-		Name:         userName,
-		RefreshToken: newRefreshToken,
-	}); err != nil {
+	if err := r.InsertToken(ctx, userName, newRefreshToken, timeNow); err != nil {
 		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	return nil
 }
 
-func (r *RefreshRepo) Count(ctx context.Context, userName string) (int64, error) {
-	const op = "storage.mongodb.Count"
+func (r *RefreshRepo) CountTokens(ctx context.Context, userName string) (int64, error) {
+	const op = "storage.mongodb.CountTokens"
 
 	filter := bson.M{name: userName}
 
@@ -101,11 +100,25 @@ func (r *RefreshRepo) Count(ctx context.Context, userName string) (int64, error)
 	return count, nil
 }
 
-func (r *RefreshRepo) ChechInRepo(ctx context.Context, refreshToken string, userName string) bool {
+func (r *RefreshRepo) ChechUserToken(ctx context.Context, refreshToken string, userName string, ttl time.Duration) bool {
 	filter := bson.M{rToken: refreshToken, name: userName}
 
 	var user models.Users
 	err := r.db.FindOne(ctx, filter).Decode(&user)
 
 	return err == nil
+}
+
+func (r *RefreshRepo) GetCreatedTime(ctx context.Context, refreshToken string, userName string) (time.Time, error) {
+	const op = "storage.mongodb.GetCreatedTime"
+
+	filter := bson.M{rToken: refreshToken, name: userName}
+
+	var user models.Users
+	err := r.db.FindOne(ctx, filter).Decode(&user)
+	if err != nil {
+		return time.Time{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return user.CreatedTime, nil
 }

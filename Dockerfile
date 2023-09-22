@@ -6,14 +6,14 @@ COPY ["go.mod", "go.sum", "./"]
 RUN go mod download
 
 COPY . ./
-RUN go build -o ./bin/app  cmd/auth/main.go
+RUN go build -o ./auth-app  cmd/auth/main.go
 
 FROM alpine
 
-COPY --from=builder /app/bin/app /
-COPY --from=builder /app/config.env /
-COPY --from=builder /app/config /config/
+COPY --from=builder /app/auth-app /
+COPY  config.env /
+COPY /config /config
 
 EXPOSE 8080
 
-CMD ["/app"]
+CMD ["/auth-app"]
