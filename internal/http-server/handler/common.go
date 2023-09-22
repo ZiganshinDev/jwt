@@ -2,8 +2,11 @@ package handler
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
+
+	"golang.org/x/crypto/bcrypt"
 )
 
 func renderJSON(w http.ResponseWriter, v interface{}) {
@@ -19,13 +22,38 @@ func renderJSON(w http.ResponseWriter, v interface{}) {
 	}
 }
 
-func setJWTToken(w http.ResponseWriter, accessToken string, ttl time.Duration) {
-	cookie := http.Cookie{
-		Name:    "jwt_token",
+func setCookies(w http.ResponseWriter, refreshToken string, accessToken string, refreshTokenTTL time.Duration, accessTokenTTL time.Duration) {
+	httpOnlyCookie := http.Cookie{
+		Name:     "httpOnly_cookie",
+		Value:    refreshToken,
+		Expires:  time.Now().Add(refreshTokenTTL),
+		Path:     "/api/auth",
+		HttpOnly: true,
+	}
+	http.SetCookie(w, &httpOnlyCookie)
+
+	regularCookie := http.Cookie{
+		Name:    "regular_cookie",
 		Value:   accessToken,
-		Expires: time.Now().Add(ttl),
+		Expires: time.Now().Add(accessTokenTTL),
 		Path:    "/api/auth",
 	}
+	http.SetCookie(w, &regularCookie)
+}
 
-	http.SetCookie(w, &cookie)
+func hashToken(token string) ([]byte, error) {
+	const op = "hanlder.common.hashToken"
+
+	hashedToken, err := bcrypt.GenerateFromPassword([]byte(token), bcrypt.DefaultCost)
+	if err != nil {
+		return []byte{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return hashedToken, nil
+}
+
+func compareToken(providedToken string, hashedToken []byte) bool {
+	err := bcrypt.CompareHashAndPassword(hashedToken, []byte(providedToken))
+
+	return err == nil
 }

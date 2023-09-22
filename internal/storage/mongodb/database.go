@@ -100,7 +100,7 @@ func (r *RefreshRepo) CountTokens(ctx context.Context, userName string) (int64, 
 	return count, nil
 }
 
-func (r *RefreshRepo) ChechUserToken(ctx context.Context, refreshToken string, userName string, ttl time.Duration) bool {
+func (r *RefreshRepo) ChechUserToken(ctx context.Context, refreshToken string, userName string) bool {
 	filter := bson.M{rToken: refreshToken, name: userName}
 
 	var user models.Users
@@ -121,4 +121,18 @@ func (r *RefreshRepo) GetCreatedTime(ctx context.Context, refreshToken string, u
 	}
 
 	return user.CreatedTime, nil
+}
+
+func (r *RefreshRepo) GetTokenByUser(ctx context.Context, userName string) (string, error) {
+	const op = "storage.mongodb.GetTokenByUser"
+
+	filter := bson.M{name: userName}
+
+	var user models.Users
+	err := r.db.FindOne(ctx, filter).Decode(&user)
+	if err != nil {
+		return "", fmt.Errorf("%s: %w", op, err)
+	}
+
+	return user.RefreshToken, nil
 }
