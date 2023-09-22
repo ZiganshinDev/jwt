@@ -21,7 +21,6 @@ type HTTPServer struct {
 	IdleTimeout time.Duration `yaml:"idle_timeout" env-default:"60s"`
 }
 
-// TODO change to yaml
 type Mongo struct {
 	URI      string
 	User     string
@@ -42,7 +41,6 @@ func MustLoad() *Config {
 		log.Fatal("CONFIG_PATH is not set")
 	}
 
-	// check if file exists
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		log.Fatalf("config file does not exist: %s", configPath)
 	}

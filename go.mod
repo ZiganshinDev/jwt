@@ -5,6 +5,7 @@ go 1.20
 require (
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/ilyakaznacheev/cleanenv v1.5.0
+	github.com/joho/godotenv v1.5.1
 	go.mongodb.org/mongo-driver v1.12.1
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9
 )
@@ -12,7 +13,6 @@ require (
 require (
 	github.com/BurntSushi/toml v1.2.1 // indirect
 	github.com/golang/snappy v0.0.1 // indirect
-	github.com/joho/godotenv v1.5.1 // indirect
 	github.com/klauspost/compress v1.13.6 // indirect
 	github.com/montanaflynn/stats v0.0.0-20171201202039-1bf9dbcd8cbe // indirect
 	github.com/xdg-go/pbkdf2 v1.0.0 // indirect

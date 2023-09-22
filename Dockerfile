@@ -1,17 +1,19 @@
-# Используйте официальный образ Golang как базовый образ
-FROM golang:latest
+FROM golang:1.20-alpine AS builder
 
-# Установите рабочую директорию внутри контейнера
 WORKDIR /app
 
-# Копируйте исходный код в контейнер
-COPY . .
+COPY ["go.mod", "go.sum", "./"]
+RUN go mod download
 
-# Соберите исполняемый файл
-RUN go build -o server ./cmd/auth/main.go
+COPY . ./
+RUN go build -o ./bin/app  cmd/auth/main.go
 
-# Укажите порт, который будет слушать ваш сервер
+FROM alpine
+
+COPY --from=builder /app/bin/app /
+COPY --from=builder /app/config.env /
+COPY --from=builder /app/config /config/
+
 EXPOSE 8080
 
-# Запустите ваш сервер при запуске контейнера
-CMD ["./server"]
+CMD ["/app"]
