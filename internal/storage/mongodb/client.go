@@ -27,7 +27,6 @@ func NewClient(uri, username, password string) (*mongo.Client, error) {
 		return nil, fmt.Errorf("%s: %w", op, err)
 	}
 
-	// Проверьте подключение
 	err = client.Ping(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("%s: %w", op, err)

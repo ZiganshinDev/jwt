@@ -119,9 +119,6 @@ func (h *Handler) authHandler() http.HandlerFunc {
 			return
 		}
 
-		fmt.Println(hashedToken)
-		fmt.Println(string(hashedToken))
-
 		if err := h.storage.InsertToken(context.TODO(), userName, string(hashedToken), time.Now()); err != nil {
 			log.Printf("%s: %v", op, err)
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
@@ -164,7 +161,7 @@ func (h *Handler) refreshHandler() http.HandlerFunc {
 		refreshTokenFromDB, err := h.storage.GetTokenByUser(context.Background(), userName)
 		if err != nil {
 			log.Printf("%s: %v", op, err)
-			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			http.Error(w, "Bad Request", http.StatusBadRequest)
 			return
 		}
 
