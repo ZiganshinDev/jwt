@@ -64,7 +64,21 @@ Access, Refresh токены обоюдно связаны, Refresh операц
 1. Старался не использовать сторонних библиотек, для удволетворения "Используемые технологии", поэтому пришлось писать на net/http, вместо привычных фреймворков.
 2. Можно протестировать без Докера, тогда нужно обновить config.env "CONFIG_PATH=./config/prod.yaml" -> "CONFIG_PATH=./config/local.yaml" и соответственно запустить MongoDB на локальной машине.
 3. Нет управления "руками" JWT токенов (бан, удаление руками, т.к. нарушалась бы суть jwt токенов). Согласно: https://gist.github.com/zmts/802dc9c3510d79fd40f9dc38a12bccfc
-4. Имеется метод для парсинга JWT токенов, для будующего расширения функционала.
 
 # Спасибо за внимание, буду рад фид-беку. 
 *https://github.com/ZiganshinDev* 
+
+# Демонстрация: 
+
+1. Позитивный сценарий:
+   ![Imgur](https://i.imgur.com/dmaJxjE.png)
+   ![Imgur](https://i.imgur.com/TVvYYDN.png)
+   ![Imgur](https://i.imgur.com/LU8AzJK.png)
+   ![Imgur](https://i.imgur.com/CkgsIVf.png)
+
+2. Негативный сценарий. Разные варианты:
+   ![Imgur](https://i.imgur.com/xZSgTL9.png)
+   ![Imgur](https://i.imgur.com/gUf8PZ8.png)
+   ![Imgur](https://i.imgur.com/sWuZpfd.png)
+   ![Imgur](https://i.imgur.com/PMRTdGB.png)
+

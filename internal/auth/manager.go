@@ -7,10 +7,16 @@ import (
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
+	"github.com/google/uuid"
 )
 
 type Manager struct {
 	signingKey string
+}
+
+type CustomClaims struct {
+	jwt.StandardClaims
+	GUID string `json:"guid"`
 }
 
 func NewManager(signingKey string) (*Manager, error) {
@@ -22,32 +28,19 @@ func NewManager(signingKey string) (*Manager, error) {
 }
 
 func (m *Manager) NewJWT(data string, ttl time.Duration) (string, error) {
-	token := jwt.NewWithClaims(jwt.SigningMethodHS512, jwt.StandardClaims{
-		ExpiresAt: time.Now().Add(ttl).Unix(),
-		Subject:   data,
-	})
+	guid := uuid.New().String()
+
+	claims := CustomClaims{
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: time.Now().Add(ttl).Unix(),
+			Subject:   data,
+		},
+		GUID: guid,
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS512, claims)
 
 	return token.SignedString([]byte(m.signingKey))
-}
-
-func (m *Manager) Parse(accessToken string) (string, error) {
-	token, err := jwt.Parse(accessToken, func(token *jwt.Token) (i interface{}, err error) {
-		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
-			return nil, fmt.Errorf("unexpected signing method: %v", token.Header["alg"])
-		}
-
-		return []byte(m.signingKey), nil
-	})
-	if err != nil {
-		return "", err
-	}
-
-	claims, ok := token.Claims.(jwt.MapClaims)
-	if !ok {
-		return "", fmt.Errorf("error get user claims from token")
-	}
-
-	return claims["sub"].(string), nil
 }
 
 func (m *Manager) NewRefreshToken() (string, error) {

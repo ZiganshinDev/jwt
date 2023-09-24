@@ -22,6 +22,15 @@ func renderJSON(w http.ResponseWriter, v interface{}) {
 	}
 }
 
+func getHeader(r *http.Request, header string) (string, error) {
+	h := r.Header.Get(header)
+	if h == "" {
+		return "", fmt.Errorf(fmt.Sprintf("Header '%v' is missing", header))
+	}
+
+	return h, nil
+}
+
 func setCookies(w http.ResponseWriter, refreshToken string, accessToken string, refreshTokenTTL time.Duration, accessTokenTTL time.Duration) {
 	httpOnlyCookie := http.Cookie{
 		Name:     "httpOnly_cookie",
@@ -52,7 +61,7 @@ func hashToken(token string) ([]byte, error) {
 	return hashedToken, nil
 }
 
-func compareToken(providedToken string, hashedToken []byte) bool {
+func compareTokens(providedToken string, hashedToken []byte) bool {
 	err := bcrypt.CompareHashAndPassword(hashedToken, []byte(providedToken))
 
 	return err == nil

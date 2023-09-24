@@ -100,15 +100,6 @@ func (r *RefreshRepo) CountTokens(ctx context.Context, userName string) (int64, 
 	return count, nil
 }
 
-func (r *RefreshRepo) ChechUserToken(ctx context.Context, refreshToken string, userName string) bool {
-	filter := bson.M{rToken: refreshToken, name: userName}
-
-	var user models.Users
-	err := r.db.FindOne(ctx, filter).Decode(&user)
-
-	return err == nil
-}
-
 func (r *RefreshRepo) GetCreatedTime(ctx context.Context, refreshToken string, userName string) (time.Time, error) {
 	const op = "storage.mongodb.GetCreatedTime"
 
