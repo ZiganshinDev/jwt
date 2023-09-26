@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net/http"
 	"time"
-
-	"golang.org/x/crypto/bcrypt"
 )
 
 func renderJSON(w http.ResponseWriter, v interface{}) {
@@ -48,21 +46,4 @@ func setCookies(w http.ResponseWriter, refreshToken string, accessToken string, 
 		Path:    "/api/auth",
 	}
 	http.SetCookie(w, &regularCookie)
-}
-
-func hashToken(token string) ([]byte, error) {
-	const op = "hanlder.common.hashToken"
-
-	hashedToken, err := bcrypt.GenerateFromPassword([]byte(token), bcrypt.DefaultCost)
-	if err != nil {
-		return []byte{}, fmt.Errorf("%s: %w", op, err)
-	}
-
-	return hashedToken, nil
-}
-
-func compareTokens(providedToken string, hashedToken []byte) bool {
-	err := bcrypt.CompareHashAndPassword(hashedToken, []byte(providedToken))
-
-	return err == nil
 }

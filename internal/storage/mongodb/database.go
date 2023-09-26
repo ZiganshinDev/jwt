@@ -61,8 +61,8 @@ func (r *RefreshRepo) DeleteToken(ctx context.Context, refreshToken string) erro
 	return nil
 }
 
-func (r *RefreshRepo) DeleteTokensByName(ctx context.Context, userName string) error {
-	const op = "storage.mongodb.DeleteTokensByName"
+func (r *RefreshRepo) DeleteTokensByUser(ctx context.Context, userName string) error {
+	const op = "storage.mongodb.DeleteTokensByUser"
 
 	filter := bson.M{name: userName}
 

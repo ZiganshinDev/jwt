@@ -8,6 +8,7 @@ import (
 
 	"github.com/dgrijalva/jwt-go"
 	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type Manager struct {
@@ -44,14 +45,33 @@ func (m *Manager) NewJWT(data string, ttl time.Duration) (string, error) {
 }
 
 func (m *Manager) NewRefreshToken() (string, error) {
+	const op = "auth.manager.NewRefreshToken"
+
 	b := make([]byte, 32)
 
 	s := rand.NewSource(time.Now().Unix())
 	r := rand.New(s)
 
 	if _, err := r.Read(b); err != nil {
-		return "", err
+		return "", fmt.Errorf("%s: %w", op, err)
 	}
 
 	return fmt.Sprintf("%x", b), nil
+}
+
+func (m *Manager) HashToken(token string) ([]byte, error) {
+	const op = "auth.manager.HashToken"
+
+	hashedToken, err := bcrypt.GenerateFromPassword([]byte(token), bcrypt.DefaultCost)
+	if err != nil {
+		return []byte{}, fmt.Errorf("%s: %w", op, err)
+	}
+
+	return hashedToken, nil
+}
+
+func (m *Manager) CompareTokens(providedToken string, hashedToken []byte) bool {
+	err := bcrypt.CompareHashAndPassword(hashedToken, []byte(providedToken))
+
+	return err == nil
 }

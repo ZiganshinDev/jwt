@@ -7,4 +7,4 @@ http_server:
 
 jwt:
  access_token_ttl: 15m
- refresh_token_ttl: 720h
+ refresh_token_ttl: 30m

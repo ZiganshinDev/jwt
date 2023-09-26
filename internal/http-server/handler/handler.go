@@ -1,36 +1,27 @@
 package handler
 
 import (
-	"context"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/ZiganshinDev/medods/internal/config"
 )
 
-type Storage interface {
-	InsertToken(ctx context.Context, userName string, refreshToken string, timeNow time.Time) error
-	DeleteToken(ctx context.Context, refreshToken string) error
-	DeleteTokensByName(ctx context.Context, userName string) error
-	SwitchToken(ctx context.Context, oldRefreshToken string, newRefreshToken string, userName string, timeNow time.Time) error
-	CountTokens(ctx context.Context, userName string) (int64, error)
-	GetCreatedTime(ctx context.Context, refreshToken string, userName string) (time.Time, error)
-	GetTokenByUser(ctx context.Context, userName string) (string, error)
-}
-
-type TokenManager interface {
-	NewJWT(userId string, ttl time.Duration) (string, error)
-	NewRefreshToken() (string, error)
+type Auth interface {
+	GetRefreshToken(userName string) (string, error)
+	GetAccessToken(userName string) (string, error)
+	ValidToken(refreshToken string, userName string) bool
+	CheckCountTokensByUser(userName string) error
+	InsertToken(refreshToken string, userName string) error
+	SwitchToken(newToken string, userName string) error
 }
 
 type Logger func(http.Handler) http.Handler
 
 type Handler struct {
-	cfg          *config.Config
-	storage      Storage
-	tokenManager TokenManager
-	logger       Logger
+	cfg    *config.Config
+	auth   Auth
+	logger Logger
 }
 
 type response struct {
@@ -39,12 +30,11 @@ type response struct {
 	RefreshToken string `json:"refresh_token"`
 }
 
-func New(cfg *config.Config, storage Storage, tokenManager TokenManager, logger Logger) *Handler {
+func New(cfg *config.Config, auth Auth, logger Logger) *Handler {
 	return &Handler{
-		cfg:          cfg,
-		storage:      storage,
-		tokenManager: tokenManager,
-		logger:       logger,
+		cfg:    cfg,
+		auth:   auth,
+		logger: logger,
 	}
 }
 
@@ -78,23 +68,23 @@ func (h *Handler) authHandler() http.HandlerFunc {
 			return
 		}
 
-		if err := h.countTokensByUser(userName); err != nil {
+		if err := h.auth.CheckCountTokensByUser(userName); err != nil {
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
 
-		refreshToken, err := h.createRefreshToken()
+		refreshToken, err := h.auth.GetRefreshToken(userName)
 		if err != nil {
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
 
-		if err := h.insertToken(refreshToken, userName); err != nil {
+		if err := h.auth.InsertToken(refreshToken, userName); err != nil {
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
 
-		accessToken, err := h.createJWTToken(userName)
+		accessToken, err := h.auth.GetAccessToken(userName)
 		if err != nil {
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
@@ -131,23 +121,23 @@ func (h *Handler) refreshHandler() http.HandlerFunc {
 			return
 		}
 
-		if ok := h.isTokenCorrectly(refreshTokenFromHeader, userName); !ok {
+		if ok := h.auth.ValidToken(refreshTokenFromHeader, userName); !ok {
 			http.Error(w, "Bad Request", http.StatusBadRequest)
 			return
 		}
 
-		newRefreshToken, err := h.createRefreshToken()
+		newRefreshToken, err := h.auth.GetRefreshToken(userName)
 		if err != nil {
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
 
-		if err := h.switchToken(newRefreshToken, userName); err != nil {
+		if err := h.auth.SwitchToken(newRefreshToken, userName); err != nil {
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
 		}
 
-		accessToken, err := h.createJWTToken(userName)
+		accessToken, err := h.auth.GetAccessToken(userName)
 		if err != nil {
 			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			return
@@ -163,125 +153,4 @@ func (h *Handler) refreshHandler() http.HandlerFunc {
 
 		renderJSON(w, response)
 	}
-}
-
-func (h *Handler) countTokensByUser(userName string) error {
-	const op = "http-server.handler.countTokens"
-
-	count, err := h.storage.CountTokens(context.TODO(), userName)
-	if err != nil {
-		return fmt.Errorf("%s: %w", op, err)
-	}
-
-	if count > 0 {
-		if err := h.storage.DeleteTokensByName(context.TODO(), userName); err != nil {
-			return fmt.Errorf("%s: %w", op, err)
-		}
-	}
-
-	return nil
-}
-
-func (h *Handler) checkTokenTtl(tokenFromDB string, userName string) (bool, error) {
-	const op = "http-server.handler.checkTokenTtl"
-
-	createdTime, err := h.storage.GetCreatedTime(context.TODO(), tokenFromDB, userName)
-	if err != nil {
-		return false, fmt.Errorf("%s: %w", op, err)
-	}
-
-	if createdTime.Add(h.cfg.JWT.RefreshTokenTTL).Before(time.Now()) {
-		if err := h.storage.DeleteToken(context.TODO(), tokenFromDB); err != nil {
-			return false, fmt.Errorf("%s: %w", op, err)
-		}
-
-		return false, nil
-	}
-
-	return true, nil
-}
-
-func (h *Handler) createJWTToken(userName string) (string, error) {
-	const op = "http-server.handler.createJWTToken"
-
-	accessToken, err := h.tokenManager.NewJWT(userName, h.cfg.AccessTokenTTL)
-	if err != nil {
-		return "", fmt.Errorf("%s: %w", op, err)
-	}
-
-	return accessToken, nil
-}
-
-func (h *Handler) createRefreshToken() (string, error) {
-	const op = "http-server.handler.createRefreshToken"
-
-	refreshToken, err := h.tokenManager.NewRefreshToken()
-	if err != nil {
-		return "", fmt.Errorf("%s: %w", op, err)
-	}
-
-	return refreshToken, nil
-}
-
-func (h *Handler) insertToken(refreshToken string, userName string) error {
-	const op = "http-server.handler.insertToken"
-
-	hashedToken, err := hashToken(refreshToken)
-	if err != nil {
-		return fmt.Errorf("%s: %w", op, err)
-	}
-
-	if err := h.storage.InsertToken(context.TODO(), userName, string(hashedToken), time.Now()); err != nil {
-		return fmt.Errorf("%s: %w", op, err)
-	}
-
-	return nil
-}
-
-func (h *Handler) getTokenFromDB(userName string) (string, error) {
-	const op = "http-server.handler.getTokenFromDB"
-
-	refreshTokenFromDB, err := h.storage.GetTokenByUser(context.Background(), userName)
-	if err != nil {
-		return "", fmt.Errorf("%s: %w", op, err)
-	}
-
-	return refreshTokenFromDB, nil
-}
-
-func (h *Handler) isTokenCorrectly(tokenFromHeader string, userName string) bool {
-	tokenFromDB, err := h.getTokenFromDB(userName)
-	if err != nil {
-		return false
-	}
-
-	if ok := compareTokens(tokenFromHeader, []byte(tokenFromDB)); !ok {
-		return false
-	}
-
-	if ok, err := h.checkTokenTtl(tokenFromDB, userName); err != nil || !ok {
-		return false
-	}
-
-	return true
-}
-
-func (h *Handler) switchToken(newToken string, userName string) error {
-	const op = "http-server.handler.switchToken"
-
-	oldToken, err := h.getTokenFromDB(userName)
-	if err != nil {
-		return fmt.Errorf("%s: %w", op, err)
-	}
-
-	hashedToken, err := hashToken(newToken)
-	if err != nil {
-		return fmt.Errorf("%s: %w", op, err)
-	}
-
-	if err := h.storage.SwitchToken(context.TODO(), oldToken, string(hashedToken), userName, time.Now()); err != nil {
-		return fmt.Errorf("%s: %w", op, err)
-	}
-
-	return nil
 }

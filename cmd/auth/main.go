@@ -16,6 +16,7 @@ import (
 	"github.com/ZiganshinDev/medods/internal/http-server/middleware/logger"
 	"github.com/ZiganshinDev/medods/internal/lib/logger/sl"
 	"github.com/ZiganshinDev/medods/internal/server"
+	"github.com/ZiganshinDev/medods/internal/service"
 	"github.com/ZiganshinDev/medods/internal/storage/mongodb"
 	"github.com/joho/godotenv"
 	"golang.org/x/exp/slog"
@@ -57,9 +58,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	service, err := service.New(cfg, mongoRefreshRepo, tokenManager)
+	if err != nil {
+		log.Error("failed to init service", sl.Err(err))
+		os.Exit(1)
+	}
+
 	logger := logger.Log
 
-	h := handler.New(cfg, mongoRefreshRepo, tokenManager, logger)
+	h := handler.New(cfg, service, logger)
 
 	srv := server.New(cfg, h.NewRouter())
 
