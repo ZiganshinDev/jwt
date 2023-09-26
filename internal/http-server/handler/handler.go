@@ -98,7 +98,10 @@ func (h *Handler) authHandler() http.HandlerFunc {
 			RefreshToken: refreshToken,
 		}
 
-		renderJSON(w, response)
+		if err := renderJSON(w, response); err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
 	}
 }
 
@@ -151,6 +154,9 @@ func (h *Handler) refreshHandler() http.HandlerFunc {
 			RefreshToken: newRefreshToken,
 		}
 
-		renderJSON(w, response)
+		if err := renderJSON(w, response); err != nil {
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			return
+		}
 	}
 }

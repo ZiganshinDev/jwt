@@ -7,17 +7,20 @@ import (
 	"time"
 )
 
-func renderJSON(w http.ResponseWriter, v interface{}) {
+func renderJSON(w http.ResponseWriter, v interface{}) error {
+	const op = "http-server.handler.renderJSON"
+
 	js, err := json.Marshal(v)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
+		return fmt.Errorf("%s: %w", op, err)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
 	if _, err := w.Write(js); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return fmt.Errorf("%s: %w", op, err)
 	}
+
+	return nil
 }
 
 func getHeader(r *http.Request, header string) (string, error) {

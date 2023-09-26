@@ -52,7 +52,7 @@ func main() {
 	mongoDatabase := mongodb.NewStorage(mongoClient, cfg.Mongo.Database)
 	mongoRefreshRepo := mongoDatabase.NewRefreshRepo()
 
-	tokenManager, err := auth.NewManager(cfg.JWT.SigningKey)
+	tokenManager, err := auth.New(cfg.JWT.SigningKey)
 	if err != nil {
 		log.Error("failed to init auth", sl.Err(err))
 		os.Exit(1)

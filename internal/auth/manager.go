@@ -20,9 +20,11 @@ type CustomClaims struct {
 	GUID string `json:"guid"`
 }
 
-func NewManager(signingKey string) (*Manager, error) {
+func New(signingKey string) (*Manager, error) {
+	const op = "auth.manager.NewManager"
+
 	if signingKey == "" {
-		return nil, errors.New("empty signing key")
+		return nil, fmt.Errorf("%s: %w", op, errors.New("empty signingKey"))
 	}
 
 	return &Manager{signingKey: signingKey}, nil
